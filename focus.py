@@ -2,47 +2,57 @@ import json
 import os
 import sys
 
+import pprint as pp
+
 from os import path
+
+focusDbPath = path.join(path.expanduser('~'), '.focus')
+focusDbFilePath = path.join(focusDbPath, 'focusDb.json')
 
 # Interacts with the Focus db file storing and retrieving workspaces and foci
 # methods for creating, getting, and updating the focus DB
 def setupFocusDb():
-    if not path.exists('~/.focus'):
-        os.mkdir('~/.focus')
-    if not path.exists('~/.focus/focusDb.json')
+    if not path.exists(focusDbPath):
+        os.mkdir(focusDbPath)
+    if not path.exists(focusDbFilePath):
         baseDb = {
             'cws' : '',
-            'cf' : '',
             'workspaces' : {}
         }
         jsonStr = json.dumps(baseDb)
-        with open('~/.focus/focusDb.json', 'w') as dbf:
+        with open(focusDbFilePath, 'w') as dbf:
             dbf.write(jsonStr)
 
 def getFocusDb():
     retVal = None
-    if not path.exists('~/.focus/focusDb.json'):
+    if not path.exists(focusDbFilePath):
         setupFocusDb()
-    with open('~/.focus/focusDb.json', 'w') as dbf:
-        retVal = json.loads(dbf.readlines())
+    with open(focusDbFilePath, 'r') as dbf:
+        retVal = json.loads(''.join(dbf.readlines()))
     return retVal
 
 def publishFocusDb(db):
     jsonStr = json.dumps(db)
-    with open('~/.focus/focusDb.json', 'w') as dbf:
+    with open(focusDbFilePath, 'w') as dbf:
         dbf.write(jsonStr)
 
 # Workspace control methods
+def workspaceExists(name):
+    db = getFocusDb()
+    return name in db['workspaces'].keys()
+
 def addWorkspace(name):
     db = getFocusDb()
-    if name not in db['workspaces'].keys():        
+    if not workspaceExists(name):
         db['workspaces'][name] = {}
     publishFocusDb(db)
 
 def removeWorkspace(name):
     db = getFocusDb()
-    if name in db['workspaces'].keys():
+    if workspaceExists(name):
         del(db['workspaces'][name])
+        if db['cws'] == name:
+            db['cws'] = ''
     publishFocusDb(db)
 
 def setCurrentWorkspace(name=None, create=False):
@@ -52,7 +62,7 @@ def setCurrentWorkspace(name=None, create=False):
     db = getFocusDb()
     if not name:
         name = ''
-    elif not name in db['workspaces'].keys():
+    elif not workspaceExists(name):
         if create:
             addWorkspace(name)
         else:
@@ -69,9 +79,20 @@ def getCurrentWorkspace():
         sys.exit()
     return db['cws']
 
+
 # Focus control methods
-def addFocus(name, ws=None, focusPath=None, create=False):
+def focusExists(name, ws=None):
+    ''' THIS ASSUMES ws EXISTS WHEN SPECIFIED'''
+    if not ws:
+        ws = getCurrentWorkspace()
+    elif not workspaceExists(ws):
+        print(f'Error: specified workspace {ws} not found.')
+        sys.exit()
+    
     db = getFocusDb()
+    return name in db['workspaces'][ws].keys()
+
+def addFocus(name, ws=None, focusPath=None, create=False):
     if not focusPath:
         focusPath = path.abspath(path.curdir)
     else:
@@ -85,23 +106,25 @@ def addFocus(name, ws=None, focusPath=None, create=False):
 
     if not ws:
         ws = getCurrentWorkspace()
-    elif ws not in db['workspaces'].keys():
+    elif not workspaceExists(ws):
             if create:
                 addWorkspace(ws)
 
-    db['workspaces'][ws][name] = focusPath
-    publishFocusDb(db)
+    if not focusExists(name, ws):
+        db = getFocusDb()
+        db['workspaces'][ws][name] = focusPath
+        publishFocusDb(db)
 
 def removeFocus(name, ws=None):
-    db = getFocusDb()
     if not ws:
         ws = getCurrentWorkspace()
-    elif ws not in db['workspaces'].keys():
+    elif not workspaceExists(ws):
         print (f'no namespace \'{ws}\' found')
     
-    if name in db['workspaces'][ws].keys():
+    if focusExists():
+        db = getFocusDb()
         del(db['workspaces'][ws][name])
-    publishFocusDb(db)
+        publishFocusDb(db)
 
 def getFocusPath(name, ws=None, focusPath=None, create=False):
     db = getFocusDb()
@@ -111,7 +134,11 @@ def getFocusPath(name, ws=None, focusPath=None, create=False):
     else:
         setCurrentWorkspace(ws, create)
 
-    if not name in db['workspaces'][ws].keys():
+    if not focusExists(name, ws):
         if create:
             addFocus(name, ws, focusPath, create)
     return db['workspaces'][ws][name]
+
+if __name__ == '__main__':
+    db = getFocusDb()
+    pp.pprint(db)
