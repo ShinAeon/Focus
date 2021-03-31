@@ -13,7 +13,7 @@ def regFocus(args):
     if args.delete:
         fc.removeFocus(args.focus, args.workspace)        
     else:
-        fc.addFocus(args.focus, args.workspace, args.path, args.register)
+        fc.addFocus(args.focus, args.workspace, args.path, args.create, args.update)
         
 
 def parseArgs():
@@ -29,10 +29,12 @@ def parseArgs():
     # string data for focus registration
     focusHelpStr = 'Register a focus'
     focusArgStr = 'Name of focus to register'
-    focusPArgStr = 'Path to focus. Defaults to current directory'
-    focusWArgStr = 'Workspace with which to associate new focus. Defaults to current active workspace.'
-    focusRArgStr = 'Create path or workspace if needed to register focus'
+    focusCArgStr = 'Create path or workspace if needed to register focus'
     focusDArgStr = 'Delete focus from specified workspace(defaults to current workspace)'
+    focusPArgStr = 'Specify path to focus. Defaults to current directory'
+    focusUArgStr = 'Update path for an existing focus'
+    focusWArgStr = 'Workspace with which to associate new focus. Defaults to current active workspace.'
+
 
     # create the top level parser
     parser = argparse.ArgumentParser(description=dString)
@@ -47,11 +49,12 @@ def parseArgs():
 
     # argument parser for foci
     fParser = sp.add_parser('focus', help=focusHelpStr)
-    fParser.add_argument('focus', help=focusArgStr)
-    fParser.add_argument('-p', '--path', type=str, help=focusArgStr, action='store', default=None)
-    fParser.add_argument('-w', '--workspace', type=str, help=focusArgStr, action='store', default=None)
-    fParser.add_argument('-r', '--register', help=focusArgStr, action='store_true')
+    fParser.add_argument('focus', help=focusArgStr)    
+    fParser.add_argument('-c', '--create', help=focusCArgStr, action='store_true')
     fParser.add_argument('-d','--delete', action='store_true', help=focusDArgStr)
+    fParser.add_argument('-p', '--path', type=str, help=focusArgStr, action='store', default=None)
+    fparser.add_argument('-u', '--update', help=focusUArgStr, action='store_true')
+    fParser.add_argument('-w', '--workspace', type=str, help=focusArgStr, action='store', default=None)
     fParser.set_defaults(func=regFocus)
 
     args=parser.parse_args()

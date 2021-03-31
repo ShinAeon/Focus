@@ -41,6 +41,18 @@ def workspaceExists(name):
     db = getFocusDb()
     return name in db['workspaces'].keys()
 
+def verifyWorkspace(ws, create=False):
+    if not ws:
+        ws = getCurrentWorkspace()
+    elif not workspaceExists(ws):
+            if create:
+                addWorkspace(ws)
+            else:
+                print(f'Workspace {ws} does not exist.')
+                print(f'Specify -c/--create when registering or create first.')
+                sys.exit()
+    return ws
+
 def addWorkspace(name):
     db = getFocusDb()
     if not workspaceExists(name):
@@ -48,18 +60,17 @@ def addWorkspace(name):
     publishFocusDb(db)
 
 def removeWorkspace(name):
-    db = getFocusDb()
     if workspaceExists(name):
+        if getCurrentWorkspace() == name:
+            setCurrentWorkspace()
+        db = getFocusDb()
         del(db['workspaces'][name])
-        if db['cws'] == name:
-            db['cws'] = ''
-    publishFocusDb(db)
+        publishFocusDb(db)
 
 def setCurrentWorkspace(name=None, create=False):
     '''
     Call without specifying any arguments to unset the current workspace
-    '''
-    db = getFocusDb()
+    '''    
     if not name:
         name = ''
     elif not workspaceExists(name):
@@ -69,6 +80,7 @@ def setCurrentWorkspace(name=None, create=False):
             print(f'No registered workspace named {name}.')
             print(f'Specify -r or use \'reg ws\' tool to register a new workspace')
             sys.exit()
+    db = getFocusDb()
     db['cws'] = name
     publishFocusDb(db)
 
@@ -78,7 +90,6 @@ def getCurrentWorkspace():
         print(f'No workspace has been activated, activate one with \'ws\' command first')
         sys.exit()
     return db['cws']
-
 
 # Focus control methods
 def focusExists(name, ws=None):
@@ -92,7 +103,7 @@ def focusExists(name, ws=None):
     db = getFocusDb()
     return name in db['workspaces'][ws].keys()
 
-def addFocus(name, ws=None, focusPath=None, create=False):
+def verifyFocusPath(path, create=False):
     if not focusPath:
         focusPath = path.abspath(path.curdir)
     else:
@@ -103,14 +114,13 @@ def addFocus(name, ws=None, focusPath=None, create=False):
                 print(f'Focus path {focusPath} does not exist.')
                 print(f'Specify -c/--create when registering or create first.')
                 sys.exit()
+    return focusPath
 
-    if not ws:
-        ws = getCurrentWorkspace()
-    elif not workspaceExists(ws):
-            if create:
-                addWorkspace(ws)
+def addFocus(name, ws=None, focusPath=None, create=False, update=False):
+    focusPath = verifyFocusPath(focusPath, create)
+    ws = verifyWorkspace(ws, create)
 
-    if not focusExists(name, ws):
+    if update or not focusExists(name, ws):
         db = getFocusDb()
         db['workspaces'][ws][name] = focusPath
         publishFocusDb(db)
